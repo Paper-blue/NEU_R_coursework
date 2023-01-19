@@ -1,0 +1,123 @@
+---
+title: "R实验四"
+output: html_document
+---
+```{r}
+df<-read.csv("/Users/zhilan/Desktop/R\ DATA/hospital-data.csv")
+nrow(df)
+head(df,n=5)
+
+```
+```{r}
+summary(df)
+range(df$ZIP.Code)
+```
+
+
+```{r}
+```
+
+
+```{r}
+getSummary<-function(x,na.omit=FALSE){
+  if(na.omit)
+    #X<-na.omit(x)
+    x<-x[!is.na(x)] 
+  getMax<-max(x)
+  getMin<-min(x)
+  getMean<-mean(x)
+  getMedian<-median(x)
+  getSd<-sd(x)
+  getVar<-var(x)
+  return(c(max=getMax,min=getMin,mean=getMean,median=getMedian,sd=getSd,var=getVar))
+}
+sapply(df["Phone.Number"], getSummary,na.omit=TRUE)
+```
+
+
+```{r}
+aggregate(df["Phone.Number"],by=list(State=df$State),median)
+```
+
+
+```{r}
+getMax_Min<-function(x,na.omit=FALSE){
+  if(na.omit){
+    x<-na.omit(x)
+  }
+  getMax<-max(x)
+  getMin<-min(x)
+  return(c(max=getMax,min=getMin))
+}
+head(by(df["Phone.Number"],df$City,getMax_Min,na.omit=TRUE),n=3)
+```
+
+
+```{r}
+# mytable <- with(df, table(State))
+mytable <- table(df$State)
+mytable
+mytable<-prop.table(mytable) # proportions
+mytable
+```
+
+
+```{r}
+# mycontable<-with(df, table(State,Hospital.Type))
+mycontable<-table(df$State,df$Hospital.Type)
+head(mycontable)
+# mycontable <- xtabs(~ State+Hospital.Type, data=df)
+# head(mycontable)
+margin.table(mycontable, 2) # column sums
+# addmargins(mycontable) # add row and column sums to table
+```
+
+
+```{r}
+care_df <- read.csv("/Users/zhilan/Desktop/R\ DATA/outcome-of-care-measures.csv")
+dim(care_df)
+```
+
+
+```{r}
+best <- function(state, outcome) {
+  if (!state %in% care_df$State)
+    return("invalid state")
+  if (!outcome %in% c("heart attack", "heart failure", "pneumonia"))
+    return("invalid outcome")
+  a <- care_df[care_df$State == state,]
+  if (outcome == "heart attack") {
+    a <-
+      a[a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack != "Not Available",]
+    a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack <-
+      as.numeric(a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack)
+    b <-
+      a[order(a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack), ]
+  } else if (outcome == "heart failure") {
+    a <-
+      a[a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure != "Not Available",]
+    a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure <-
+      as.numeric(a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure)
+    b <-
+      a[order(a$Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure), ]
+  } else{
+    a <-
+      a[a$Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia != "Not Available",]
+    a$Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia <-
+      as.numeric(a$Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia)
+    b <-
+      a[order(a$Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia), ]
+  }
+  return(hospital = b[1,]["Hospital.Name"])
+}
+```
+
+
+```{r}
+best("TX", "heart failure")
+best("MD", "heart attack") 
+best("MD", "pneumonia")
+best("BB", "heart attack")
+best("NY", "hert attack")
+```
+

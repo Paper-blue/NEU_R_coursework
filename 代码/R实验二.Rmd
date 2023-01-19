@@ -1,0 +1,137 @@
+#实验二 基本数据处理
+##R 数据处理知识点回顾
+###知识点 1： 
+变量创建、变量重编码、缺失值、日期值处理，数据类型转化，数据排序。
+###知识点 2： 
+数据集的合并，选取子集，使用 SQL 操作数据框，数据的整合与重构。
+###知识点 3： 
+控制流：条件与循环
+###知识点 4： 
+用户自编函数
+##题目一
+将item_feature1.csv读入，存储到df中；并给df的列分别命名为： date 、item_id 、 cate_id 、 cate_level_id 、 brand_id 、 supplier_id 、 pv_ipv 、cart_uv 、 collect_uv 和cart_ipv 。
+注：【日期、商品id、仓库id、仓库级别id、品牌id、供应商id、浏览次数、加购人次、收藏人次和被加购次数】
+
+```{r}
+df <-read.csv("/Users/zhilan/Desktop/R\ DATA/item_feature1.csv")
+#查看所有变量名
+names(df)
+```
+```{r}
+names(df)[1:10] <-
+  c(
+    "date" ,
+    "item_id" ,
+    "cate_id" ,
+    "cate_level_id" ,
+    "brand_id" ,
+    "supplier_id" ,
+    "pv_ipv" ,
+    "cart_uv" ,
+    "collect_uv" ,
+    "cart_ipv"
+  )
+names(df)  
+```
+为df中的cart_uv 重新编码并将新变量命名为recode，将小于5000的归为less,将大于等于5000小于15000的归为common,其他的归为many；查看尾部的10条数据。
+```{r}
+df$recode[df$cart_uv<5000]<-"less"
+df$recode[df$cart_uv>=5000&df$cart_uv<15000]<-"common"
+df$recode[df$cart_uv>=15000]<-"many"
+tail(df,10)
+```
+查看df中是否有缺失值；如有缺失值，删除df中所有含缺失值的行。
+```{r}
+sum(rowSums(is.na(df)) > 0)
+nrow(df)
+df<-na.omit(df)
+nrow(df)
+```
+
+将df中的date字段转换成日期类型，如：“2015-02-13”。
+```{r}
+# 最初的date数据类型是integer
+class(df$date)
+# 然后转化为character
+df$date <- as.character(df$date)
+class(df$date)
+# 然后转化为Date
+df$date <- as.Date(df$date, "%Y%m%d")
+class(df$date)
+head(df$date, 10)
+```
+
+将df按照date字段升序排列，另存为df_asc；并查看前10条数据。
+```{r}
+# 升序
+df_asc<-df[order(df$date),]
+head(df_asc,10)
+```
+
+将df按照date字段升序和item_id降序排序，另存在df1中；并查看前5条数据。
+```{r}
+df1<-df[order(df$date,-df$item_id),]
+head(df1)
+```
+#题目二
+1.从df中选取date 、 item_id 、 cate_id 、 cart_uv 、 recode、 collect_uv 和cart_ipv字段另存为df11；
+剔除df11中的cart_ipv字段另存为df2；
+从df11中选取item_id 大于500的并且recode为less的数据另存为df3。
+```{r}
+df11<-df[c("date","item_id","cate_id","cart_uv","recode","collect_uv","cart_ipv")]
+df2<-df11[!names(df11)%in%c("cart_ipv")]
+```
+2.从df中选取date为2015-02-14，item_id为300，并保留date到supplier_id其间的所有列，另存为df_sub。
+
+```{r}
+df_sub <-subset(df, date == "2015-02-14" &item_id == 300, select = date:supplier_id)
+df_sub
+
+```
+
+3.从df中无放回的随机抽取500条样本，另存为df4；查看样本的维度和数据的头部数据。
+```{r}
+df4<-df[sample(1:nrow(df),500,replace = FALSE),]
+dim(df4)
+head(df4)
+```
+
+4.从df11中选取列从item_id到cate_id的数据，另存为df1_temp,然后与df4按照item_id合并存为df5。
+
+```{r}
+df1_temp<-df11[c("item_id","cate_id")]
+df5<-merge(df1_temp,df4,by="item_id")
+# merge参数位置调换，增加的新变量名字不同，cate_id.x,cate_id.y
+# df55<-merge(df4,df1_temp,by="item_id")
+dim(df1_temp)
+dim(df4)
+dim(df5)
+```
+
+5.从df11中利用sql的方法选取item_id为300的数据，另存为df6中。【注：sqldf包】
+
+```{r}
+# install.packages("sqldf")
+# install.packages("RSQLite")
+library(sqldf)
+df6 <- sqldf("select * from df11 where  item_id=300")
+head(df6)
+```
+
+6.从df2中有放回的随机取出与df6一样多的数据条数做为df_temp，然后与df6按列（横
+向）合并，另存为df7。
+```{r}
+df_temp<-df2[sample(1:nrow(df2),nrow(df6),replace = TRUE),]
+dim(df_temp)
+dim(df6)
+df7<-cbind(df_temp,df6)
+dim(df7)
+```
+7.从df中选取 date 、 item_id 、 cate_id 和cart_ipv 另存为feature，并将feature 按日
+期升序排列，取出feature 中唯一的cate_id 【去重即可】。
+```{r}
+feature<-df[c("date","item_id","cate_id","cart_ipv")]
+feature<-df[order(df$date),]
+unique(feature$cate_id)
+```
+

@@ -1,0 +1,84 @@
+---
+title: "R实验五"
+output: word_document
+---
+```{r}
+df<-read.csv("/Users/zhilan/Desktop/R\ DATA/SY-20150401.csv")
+```
+
+
+```{r}
+colnames(df)
+colnames(df) <- c('card.id','date','time','station','vehicle','money','property')
+colnames(df)
+```
+
+
+```{r}
+trade.metro<-df[df$vehicle=="地铁",]
+```
+
+
+```{r}
+# install.packages("tidyr")
+library(tidyr)
+trade.metro<-separate(trade.metro ,station, c('line', 'station'), sep = '号线')
+head(trade.metro)
+library(dplyr)
+library(lubridate)
+```
+
+
+```{r}
+trade.metro <- trade.metro %>%mutate(M5=ceiling(period_to_seconds(hms(time))/300))
+head(trade.metro)
+```
+
+
+```{r}
+trade.metro.in <- trade.metro %>%
+  filter(money==0) %>%
+  select(card.id,"time.in"=time,"line.in"=line,"station.in"=station,"M5.in"=M5)
+head(trade.metro.in)
+```
+
+
+```{r}
+trade.metro.out <- trade.metro %>%
+  filter(money>0)%>%
+  select(card.id,"time.out"=time,"line.out"=line,"station.out"=station,money,"M5.out"=M5)
+head(trade.metro.out)
+```
+
+
+```{r}
+trade.metro.in.out <-
+  merge(trade.metro.in, trade.metro.out, by = "card.id") %>%
+  mutate(duration = (period_to_seconds(hms(time.out)) - period_to_seconds(hms(time.in)))) %>%
+  filter(duration > 0)
+head(trade.metro.in.out)
+```
+
+
+```{r}
+trade.metro.in.out <- data.table(trade.metro.in.out)
+trade.metro.in.out[, duration_min := min(duration), by=list(card.id, M5.in)]
+trade.metro.in.out <- trade.metro.in.out %>%
+  filter(duration==duration_min) %>%
+  select(-duration_min)
+head(trade.metro.in.out)
+```
+
+
+```{r}
+trade.metro.in.out<-trade.metro.in.out[order(trade.metro.in.out$card.id),]
+# trade.metro.in.out <- arrange(trade.metro.in.out,card.id)
+head(trade.metro.in.out,10)
+```
+
+
+```{r}
+write.csv(trade.metro.in.out,"shmetro_line_in_out.csv",row.names = F)
+```
+
+
